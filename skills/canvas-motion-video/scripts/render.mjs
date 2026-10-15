@@ -8,6 +8,7 @@
  *   node render.mjs --html index.html --from 4 --to 7          # 只渲染 4-7s 片段
  *   node render.mjs --html index.html --to 10 --fps 24         # 24fps
  *   node render.mjs --html index.html --to 10 --keep-frames    # 保留逐帧 JPEG
+ *   node render.mjs --html index.html --to 10 --quality 80     # JPEG 画质 1-100，默认 92
  *
  * 原理: HTML 暴露 window.__seek(t) 把 GSAP 时间轴暂停到 t 重绘一帧，
  * 每帧独立 → 可任意并行、输出可复现、与播放帧率解耦。
@@ -28,7 +29,7 @@ function parseArgs(argv) {
   const args = {
     html: "index.html", fps: 30, out: "out/motion.mp4", framesDir: ".frames",
     from: 0, to: 10, keepFrames: false, workers: 6,
-    width: 1920, height: 1080,
+    width: 1920, height: 1080, quality: 92,
     chrome: process.env.RENDER_CHROME || ""
   };
   for (let i = 0; i < argv.length; i++) {
@@ -43,6 +44,7 @@ function parseArgs(argv) {
     else if (a === "--workers") args.workers = parseInt(argv[++i], 10);
     else if (a === "--width") args.width = parseInt(argv[++i], 10);
     else if (a === "--height") args.height = parseInt(argv[++i], 10);
+    else if (a === "--quality") args.quality = Math.min(100, Math.max(1, parseInt(argv[++i], 10) || 92));
     else if (a === "--chrome") args.chrome = argv[++i];
     else if (a === "--help" || a === "-h") { console.log("see header comment"); process.exit(0); }
   }
@@ -123,7 +125,7 @@ async function captureRange(fromT, toT) {
       const t = idx / args.fps;
       await page.evaluate((tt) => window.__seek(tt), t);
       const file = path.join(framesDir, "f_" + String(idx).padStart(5, "0") + ".jpg");
-      await page.screenshot({ path: file, type: "jpeg", quality: 92, clip: { x: 0, y: 0, width: W, height: H }, captureBeyondViewport: false });
+      await page.screenshot({ path: file, type: "jpeg", quality: args.quality, clip: { x: 0, y: 0, width: W, height: H }, captureBeyondViewport: false });
       if ((idx - startIdx) % 150 === 0) {
         console.log(`[worker ${process.pid}] frame ${idx} (t=${t.toFixed(1)}s) +${((Date.now() - t0) / 1000).toFixed(0)}s`);
       }

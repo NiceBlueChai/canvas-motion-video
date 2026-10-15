@@ -15,7 +15,7 @@ agent_created: true
 
 ### Step 1 — 明确规格
 
-向用户确认(有默认值就少问)：时长(不锁定，按内容定，10s 片头 / 1–3 分钟教程都正常)、分辨率(默认 1920×1080 16:9)、fps(默认 30)、内容主题与分镜。产出：一张分镜/时间轴表(时间段 → 画面内容 → 动画形式)。**🔴 CHECKPOINT · 🛑 STOP**：分镜表给用户看过再动手，别直接开写代码。
+向用户确认(有默认值就少问)：时长(不锁定，按内容定，10s 片头 / 1–3 分钟教程都正常)、分辨率(默认 1920×1080 16:9)、fps(默认 30)、内容主题与分镜。产出：一张分镜/时间轴表(时间段 → 画面内容 → 动画形式)。**🔴 CHECKPOINT · 🛑 STOP**：规格有歧义(时长/内容/分镜没说清)才停下问；三项都明确就直接干。
 
 ### Step 2 — 写单文件 HTML 动效
 
@@ -49,9 +49,9 @@ node scripts/render.mjs --html index.html --from 2 --to 2.05 --fps 10 --workers 
 
 每个场景把 `--from/--to` 换成该场景时间点，重复执行。
 
-**冒烟的证据是 `--frames-dir` 里的 JPEG 帧，不是 mp4。** 上面这条命令产出的 mp4 只有 1 帧(`ffprobe` 一查 `nb_frames=1`、`duration≈0.1s`)，那只是渲染器的副产物——**严禁把它当"渲染验证"交付给用户**，这是误导性交付，用户一 ffprobe 就露馅。帧全部用 Read 工具亲眼看过再进 Step 5。
+**冒烟的证据是 `--frames-dir` 里的 JPEG 帧，不是 mp4。** 上面这条命令产出的 mp4 只有 1 帧(`ffprobe` 一查 `nb_frames=1`、`duration≈0.1s`)，那只是渲染器的副产物——**严禁把它当"渲染验证"交付给用户**，这是误导性交付，用户一 ffprobe 就露馅。每类场景至少看 1 帧、收尾阶段必看再进 Step 5(长视频可批量抽样)。
 
-黑帧(JPEG <20KB)或内容不对就修 HTML。步骤示例见 `references/animation-patterns.md` 的「验证流程」。
+黑帧(JPEG <20KB)或内容不对就修 HTML。详见 `references/animation-patterns.md`「验证流程」。
 
 ### Step 5 — 全量渲染 + 抽检交付
 
@@ -79,7 +79,7 @@ node scripts/render.mjs --html index.html --from 0 --to <总秒数> --fps 30 --w
 | 冒烟黑帧(JPEG <20KB) | 查相位归一化(`start+dur≤1`)、绘制函数内是否混进 `rand()` | 读 `references/animation-patterns.md` 踩坑表 |
 | 成片时长/帧数与预期不符 | 复核 `--from/--to` 与 `--fps` | 分段 `--from/--to` 渲染，定位漂移的那一段 |
 
-耗时参考：1080p 单帧 ~0.15s，6 并行约 3 分钟/5400 帧(3 分钟视频)。
+耗时参考：1080p 单帧 ~0.15s，6 并行约 3 分钟/5400 帧。
 
 ## 文件清单
 
@@ -87,5 +87,5 @@ node scripts/render.mjs --html index.html --from 0 --to <总秒数> --fps 30 --w
 |---|---|
 | `scripts/build.mjs` | GSAP 内联构建(src.html → index.html) |
 | `scripts/render.mjs` | 命令行动效模式：并行截帧 + ffmpeg 合成 |
-| `references/animation-patterns.md` | 架构规范、时间轴设计、确定性规则、验证流程、踩坑表 |
+| `references/animation-patterns.md` | 架构规范、时间轴、确定性规则、验证流程、踩坑表 |
 | `assets/template/src.html` | 可直接跑的起步模板(含全部 API 骨架) |

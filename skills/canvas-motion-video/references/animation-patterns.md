@@ -2,7 +2,7 @@
 
 > 配套 `canvas-motion-video` skill。写任何动效 HTML 前先读本文档的「架构」与「确定性红线」；完成后按「验证流程」走一遍。
 
-## 1. 架构(唯一正确姿势)
+## 1. 架构(标准姿势)
 
 ```
 state 对象(全部动画数值)
@@ -33,8 +33,8 @@ else { gsap.ticker.add(function () { drawFrame(tl.time()); }); tl.play(); }
 
 要点：
 - **GSAP 是时钟 + 缓动引擎**，不持有画面知识；画面全部由 drawFrame 从 state 重建。这样任意 t 都能画出正确的一帧——这是并行截帧和跳帧调试的基础。
-- 画布固定内部分辨率(默认 1920×1080)，CSS `width:100vw;height:100vh` 自适应；截图时 viewport 设为同尺寸、deviceScaleFactor 1。
-- 短动效(≤15s)全部用 GSAP tween 排时间轴；长视频(≥1min)用「场景数组 + 局部进度算术」排期，GSAP 只驱动全局属性(标题、zoom、fade)，避免时间轴几十行排不动。
+- 画布固定内部分辨率(默认 1920×1080)。**CSS 必须信箱式适配**：`width:min(100vw, 100vh*16/9); height:min(100vh, 100vw*9/16)`，画布用 flex 或 margin auto 居中。别写 `width:100vw;height:100vh` 直接拉伸——非 16:9 窗口预览时圆变椭圆、构图畸变，用户一拖窗口就露馅(盲测实测踩过：本 skill 曾把这个错误写法写成规定，被 baseline 的信箱式适配比下去)。截图时 viewport 设为同尺寸、deviceScaleFactor 1。
+- 短动效(≤15s)用 GSAP tween 排时间轴；长视频(≥1min)用「场景数组 + 局部进度算术」排期，GSAP 只驱动全局属性(标题、zoom、fade)，避免时间轴几十行排不动。
 
 ## 2. 确定性红线(违反 = 帧漂移/复现失败)
 
@@ -85,6 +85,9 @@ node scripts/render.mjs --html <项目目录>/index.html --to <总秒数>   # �
 node scripts/render.mjs --html ... --from 4 --to 7                 # 片段
 node scripts/render.mjs --html ... --to 10 --fps 60 --workers 8    # 高帧率/多并行
 node scripts/render.mjs --html ... --to 10 --keep-frames           # 留帧
+node scripts/render.mjs --html ... --to 10 --quality 80            # JPEG 画质 1-100，默认 92
 ```
+
+`--width/--height` 改内部分辨率，`--fps` 改输出帧率，`--workers` 改并行度，`--quality` 改 JPEG 画质(默认 92，想要更小文件调 70-80，更高质量调 95+)。
 
 Chrome 定位：`--chrome` > `RENDER_CHROME` > 常见路径 > mdfind。puppeteer-core 定位：`RENDER_NODE_MODULES` > 托管 node 工作区 > `./node_modules`。
