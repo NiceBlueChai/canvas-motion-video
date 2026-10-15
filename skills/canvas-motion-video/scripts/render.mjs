@@ -131,6 +131,9 @@ async function captureRange(fromT, toT) {
       }
     }
     console.log(`[worker ${process.pid}] done ${endIdx - startIdx} frames in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+    /* 完成标记：父进程轮询此文件而非 await child exit 事件
+     * （Node 22 top-level await + stdio:inherit 下 exit 事件可能不触发，EXIT=13） */
+    fs.writeFileSync(path.join(framesDir, ".done_" + process.pid + ".marker"), "ok " + (endIdx - startIdx));
   } finally {
     await browser.close();
     fs.rmSync(userDir, { recursive: true, force: true });
@@ -164,14 +167,34 @@ for (let w = 0; w < workers; w++) {
     env: { ...process.env, WORKER_MODE: "1", W_FROM: String(wa), W_TO: String(wb) },
     stdio: "inherit"
   });
+  child.unref();
   procs.push(child);
 }
-let failed = 0;
-for (const p of procs) {
-  const code = await new Promise((res) => p.on("exit", res));
-  if (code !== 0) failed++;
-}
-if (failed > 0) { console.error(`ERROR: ${failed} worker(s) failed`); process.exit(1); }
+
+/* 轮询完成标记（不依赖 child exit 事件 —— Node 22 ESM top-level await 下不可靠） */
+const expected = procs.length;
+const timeoutMs = Math.max(180000, totalFrames * 100);  // 实测 ~0.02s/帧/6worker，留 5 倍余量
+await new Promise((resolve, reject) => {
+  const started = Date.now();
+  const iv = setInterval(() => {
+    let dones = [], fails = [];
+    try {
+      const files = fs.readdirSync(framesDir);
+      dones = files.filter(f => f.startsWith(".done_"));
+      fails = files.filter(f => f.startsWith(".fail_"));
+    } catch (e) { /* framesDir 暂不可读，下一轮再试 */ }
+    if (fails.length > 0) {
+      clearInterval(iv);
+      reject(new Error(fails.length + " worker(s) reported failure"));
+    } else if (dones.length >= expected) {
+      clearInterval(iv);
+      resolve();
+    } else if (Date.now() - started > timeoutMs) {
+      clearInterval(iv);
+      reject(new Error(`timeout: ${dones.length}/${expected} workers done in ${timeoutMs}ms`));
+    }
+  }, 200);
+});
 console.log(`[render] all frames captured in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 
 console.log("[ffmpeg] encoding -> " + outPath);
