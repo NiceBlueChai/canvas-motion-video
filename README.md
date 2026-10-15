@@ -13,17 +13,17 @@
 通过 [skills CLI](https://github.com/vercel-labs/skills)（`npx skills`）安装，无需预先全局装任何东西：
 
 ```bash
-# GitHub（把 <owner>/<repo> 换成实际地址）
-npx skills add <owner>/<repo> --skill canvas-motion-video
+# GitHub
+npx skills add NiceBlueChai/canvas-motion-video --skill canvas-motion-video
 
 # 安装仓库内全部 skill
-npx skills add <owner>/<repo>
+npx skills add NiceBlueChai/canvas-motion-video
 
 # Gitee 镜像（CLI 支持任意 git URL，需写完整地址）
-npx skills add https://gitee.com/<owner>/<repo> --skill canvas-motion-video
+npx skills add https://gitee.com/NiceBlueChai/canvas-motion-video --skill canvas-motion-video
 
 # 全局安装（对所有项目生效）
-npx skills add <owner>/<repo> --skill canvas-motion-video -g
+npx skills add NiceBlueChai/canvas-motion-video --skill canvas-motion-video -g
 ```
 
 常用参数：
