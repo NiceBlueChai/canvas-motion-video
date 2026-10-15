@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Template - Canvas + GSAP</title>
+<!--GSAP_SRC-->
+<style>
+  html, body { margin: 0; padding: 0; background: #000; width: 100%; height: 100%; overflow: hidden; }
+  #stage { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="stage" width="1920" height="1080"></canvas>
+<script>
+(function () {
+  "use strict";
+  /* ============================================================
+   * 起步模板：10s / 1920x1080
+   * 标题淡入(0-1s) → 粒子从中心爆开(1-4s) → 推镜淡出(7-10s)
+   * 改造点全部标注 [TODO]，架构勿动：
+   *   state ← GSAP paused timeline；drawFrame(t) 纯函数重绘
+   * ============================================================ */
+  var W = 1920, H = 1080;
+  var canvas = document.getElementById("stage");
+  var ctx = canvas.getContext("2d");
+
+  /* ---------- 确定性 RNG：所有随机只在这里发生 ---------- */
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  var rand = mulberry32(20261015); /* [TODO] 换 seed 换随机序列 */
+
+  /* ---------- [TODO] 场景数据：粒子/坐标/大小全部预生成 ---------- */
+  var PARTICLE_COUNT = 800; /* [TODO] */
+  var particles = [];
+  for (var i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      angle: rand() * Math.PI * 2,
+      maxR: (0.25 + 0.75 * rand()) * 900,
+      size: 1 + rand() * 2.5,
+      hue: 190 + rand() * 120,
+      delay: rand() * 0.3
+    });
+  }
+
+  /* ---------- state：GSAP 只驱动这些数值 ---------- */
+  var state = {
+    titleAlpha: 0, titleSpread: 0,
+    burst: 0,
+    zoom: 1, fade: 1
+  };
+  var DURATION = 10; /* [TODO] 总时长 */
+
+  var tl = gsap.timeline({ paused: true });
+  tl.to(state, { titleAlpha: 1, duration: 0.9, ease: "power2.out" }, 0.0)
+    .to(state, { titleSpread: 1, duration: 1.1, ease: "power2.out" }, 0.0)
+    .to(state, { burst: 1, duration: 3.0, ease: "power2.out" }, 1.0)
+    .to(state, { zoom: 1.08, duration: 3.0, ease: "power2.inOut" }, 7.0)
+    .to(state, { fade: 0, duration: 1.5, ease: "power2.in" }, 8.5);
+
+  /* ---------- 绘制辅助 ---------- */
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function easeOut(p) { return 1 - Math.pow(1 - p, 2.2); }
+
+  function drawBackground() {
+    ctx.fillStyle = "#04050a";
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawParticles(t) {
+    var cx = W / 2, cy = H / 2;
+    for (var i = 0; i < particles.length; i++) {
+      var pt = particles[i];
+      var age = (t - 1.0 - pt.delay) / 2.6;
+      if (age <= 0 || age >= 1) continue;
+      var r = easeOut(age) * pt.maxR;
+      var alpha = (age < 0.08 ? age / 0.08 : 1) * Math.pow(1 - age, 1.4) * 0.9;
+      var x = cx + Math.cos(pt.angle) * r;
+      var y = cy + Math.sin(pt.angle) * r;
+      ctx.strokeStyle = "hsla(" + pt.hue.toFixed(0) + ",90%,65%," + (alpha * 0.25).toFixed(3) + ")";
+      ctx.lineWidth = pt.size * 2.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(pt.angle) * 14, y - Math.sin(pt.angle) * 14);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.fillStyle = "hsla(" + pt.hue.toFixed(0) + ",100%,85%," + alpha.toFixed(3) + ")";
+      ctx.beginPath(); ctx.arc(x, y, pt.size * 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawTitle() {
+    if (state.titleAlpha <= 0.002) return;
+    var cx = W / 2;
+    var text = "你的标题"; /* [TODO] */
+    var spacing = state.titleSpread * 30;
+    ctx.font = "900 110px 'PingFang SC','Helvetica Neue','Microsoft YaHei',sans-serif";
+    ctx.textBaseline = "middle";
+    var widths = [], total = 0, k;
+    for (k = 0; k < text.length; k++) { widths.push(ctx.measureText(text[k]).width); total += widths[k]; }
+    total += spacing * (text.length - 1);
+    var x = cx - total / 2;
+    ctx.fillStyle = "rgba(255,255,255," + state.titleAlpha.toFixed(4) + ")";
+    ctx.shadowColor = "rgba(120,170,255," + (0.5 * state.titleAlpha).toFixed(4) + ")";
+    ctx.shadowBlur = 28;
+    for (k = 0; k < text.length; k++) { ctx.fillText(text[k], x, 470); x += widths[k] + spacing; }
+    ctx.shadowBlur = 0;
+  }
+
+  /* ---------- 主渲染：t 的纯函数 ---------- */
+  function drawFrame(t) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    drawBackground();
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(state.zoom, state.zoom);
+    ctx.translate(-W / 2, -H / 2);
+    drawParticles(t);
+    drawTitle();
+    ctx.restore();
+    if (state.fade < 1) {
+      ctx.fillStyle = "rgba(0,0,0," + (1 - state.fade).toFixed(4) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  /* ---------- CLI API + 预览(勿动) ---------- */
+  window.__seek = function (t) { tl.pause(t); drawFrame(tl.time()); };
+  window.__duration = DURATION;
+  window.__ready = true;
+
+  var autoT = parseFloat(new URLSearchParams(location.search).get("t"));
+  if (!isNaN(autoT)) {
+    window.__seek(autoT);
+  } else {
+    gsap.ticker.add(function () { drawFrame(tl.time()); });
+    tl.play();
+  }
+})();
+</script>
+</body>
+</html>

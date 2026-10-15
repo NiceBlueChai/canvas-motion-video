@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node
+node_modules/
+npm-debug.log*
+
+# 渲染产物（用户项目里的，不是 skill 的一部分）
+out/
+*.mp4
+.frames/
+.frames_*
+smoke/
+
+# 本地临时
+/tmp/
+*.bak
