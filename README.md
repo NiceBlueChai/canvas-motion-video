@@ -19,8 +19,8 @@ npx skills add NiceBlueChai/canvas-motion-video --skill canvas-motion-video
 # 安装仓库内全部 skill
 npx skills add NiceBlueChai/canvas-motion-video
 
-# Gitee 镜像（CLI 支持任意 git URL，需写完整地址）
-npx skills add https://gitee.com/NiceBlueChai/canvas-motion-video --skill canvas-motion-video
+# Gitee 镜像（CLI 支持任意 git URL，需写完整地址且带 .git 后缀——否则会被当成直接下载文件而失败）
+npx skills add https://gitee.com/NiceBlueChai/canvas-motion-video.git --skill canvas-motion-video
 
 # 全局安装（对所有项目生效）
 npx skills add NiceBlueChai/canvas-motion-video --skill canvas-motion-video -g
